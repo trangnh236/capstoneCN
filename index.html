@@ -30,7 +30,7 @@ nav .on{background:var(--ac);border-color:var(--ac);color:#fff}
 </main>
 <script>
 // Paste your Google Sheet "Publish to web" CSV link here. Empty = use words.csv next to this file.
-const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQJwQvykCgaqVEsHyL9txkQnDga4wY1Bn5eD760CnLVOz9j60cUGX7tukqPh4l1dwtezTdRg7CzCkYr/pubhtml?gid=419015650&amp;single=true&amp;widget=true&amp;headers=false";
+const SHEET_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQJwQvykCgaqVEsHyL9txkQnDga4wY1Bn5eD760CnLVOz9j60cUGX7tukqPh4l1dwtezTdRg7CzCkYr/pub?gid=419015650&single=true&output=csv";
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
