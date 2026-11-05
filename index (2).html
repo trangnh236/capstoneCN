@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hanyu Revision</title>
+<style>
+:root{--bg:#eef2f4;--fg:#1d2433;--card:#fff;--ac:#1f7a6d;--bad:#b3261e;--mut:#667085;--bd:#d5dde2}
+@media(prefers-color-scheme:dark){:root{--bg:#141a1f;--fg:#e8edf0;--card:#1e262c;--ac:#4cc2ae;--bad:#ff8a80;--mut:#9aa7b0;--bd:#33414a}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+main{max-width:620px;margin:auto;padding:16px}
+.hz{font-family:"Songti SC","Noto Serif SC","STSong",serif}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+button,select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;cursor:pointer}
+button:focus-visible,select:focus-visible{outline:3px solid var(--ac)}
+nav .on{background:var(--ac);border-color:var(--ac);color:#fff}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:24px;text-align:center;min-height:220px}
+.big{font-size:2.6rem;line-height:1.3}
+.mut{color:var(--mut)}
+.opts{display:grid;gap:8px;margin-top:16px}
+.opts button{text-align:left}
+.ok{border-color:var(--ac)!important;background:color-mix(in srgb,var(--ac) 18%,var(--card))!important}
+.no{border-color:var(--bad)!important;background:color-mix(in srgb,var(--bad) 15%,var(--card))!important}
+.row{display:flex;gap:8px;justify-content:center;margin-top:16px}
+.bar{display:flex;justify-content:space-between;margin:10px 2px;color:var(--mut);font-size:.9rem}
+</style></head><body><main>
+<h1 class="hz" style="margin:0 0 12px">汉语复习</h1>
+<nav id="nav"></nav>
+<div class="bar"><select id="les" aria-label="Lesson"></select><span id="st"></span></div>
+<div id="app" class="card">Loading…</div>
+</main>
+<script>
+// Paste your Google Sheet "Publish to web" CSV link here. Empty = use words.csv next to this file.
+const SHEET_URL="";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(x=>x[1]);
+const MODES={cards:"Flashcards",quiz:"Meaning quiz",fill:"Fill the blank"};
+let rows=[],mode="cards",lesson="all",prog={},score=[0,0];
+try{prog=JSON.parse(localStorage.getItem("prog")||"{}")}catch(e){}
+const bump=(w,d)=>{prog[w]=Math.max(0,Math.min(5,(prog[w]||0)+d));try{localStorage.setItem("prog",JSON.stringify(prog))}catch(e){}};
+
+function parseCSV(t){const r=[];let row=[],f="",q=false;
+for(let i=0;i<t.length;i++){const c=t[i];
+if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}
+else if(c=='"')q=true;else if(c==","){row.push(f);f=""}
+else if(c=="\n"){row.push(f);r.push(row);row=[];f=""}else if(c!="\r")f+=c}
+if(f||row.length){row.push(f);r.push(row)}
+const h=r.shift().map(s=>s.trim());
+return r.filter(x=>x.length>2).map(x=>Object.fromEntries(h.map((k,i)=>[k,(x[i]||"").trim()])))}
+
+const pool=()=>rows.filter(r=>lesson=="all"||r.lesson==lesson);
+function nextWord(list){return list.map(r=>[(prog[r.word]||0)+Math.random()*1.5,r]).sort((a,b)=>a[0]-b[0])[0][1]}
+function stat(){const p=pool(),m=p.filter(r=>(prog[r.word]||0)>=4).length;
+$("#st").textContent=`Mastered ${m}/${p.length}`+(mode!="cards"?` · Score ${score[0]}/${score[1]}`:"")}
+
+function cards(){const r=nextWord(pool());let open=false;
+const draw=()=>{$("#app").innerHTML=`<div class="big hz">${esc(r.word)}</div><div class="mut">${esc(r.type)}</div>`+
+(open?`<p style="font-size:1.2rem">${esc(r.pinyin)} <span class="mut">${esc(r.pos)}</span></p><p>${esc(r.en)}</p><p class="hz mut">${esc(r.example)}</p>
+<div class="row"><button id="a">Again</button><button id="k">Got it</button></div>`:`<div class="row"><button id="f">Show answer</button></div>`);
+if(open){$("#a").onclick=()=>{bump(r.word,-1);cards()};$("#k").onclick=()=>{bump(r.word,1);cards()}}
+else $("#f").onclick=()=>{open=true;draw()}};
+draw();stat()}
+
+function mc(prompt,sub,ans,opts,key){
+$("#app").innerHTML=`<div class="${sub?"":"hz "}big" style="font-size:${sub?"1.3rem":"2.2rem"}">${prompt}</div><div class="mut">${sub||""}</div><div class="opts"></div><div class="row" id="nx"></div>`;
+const box=$("#app .opts");let done=false;
+shuffle(opts).forEach(o=>{const b=document.createElement("button");b.className=o.hz?"hz":"";b.textContent=o.t;
+b.onclick=()=>{if(done)return;done=true;const good=o.t==ans;score[1]++;if(good)score[0]++;bump(key,good?1:-1);
+b.classList.add(good?"ok":"no");if(!good)[...box.children].find(x=>x.textContent==ans).classList.add("ok");
+stat();const n=document.createElement("button");n.textContent="Next";n.onclick=run;$("#nx").append(n);n.focus()};box.append(b)})}
+
+function quiz(){const p=pool();if(p.length<4)return $("#app").textContent="Need at least 4 entries.";
+const r=nextWord(p),d=shuffle(p.filter(x=>x!=r)).slice(0,3);
+if(Math.random()<.5)mc(esc(r.word),esc(r.pinyin),r.en,[r,...d].map(x=>({t:x.en})),r.word);
+else mc(esc(r.en),"Which Chinese?",r.word,[r,...d].map(x=>({t:x.word,hz:1})),r.word)}
+
+function fill(){const p=pool().filter(r=>r.example&&r.example.includes(r.word.replace(/（.*）/,"")));
+if(p.length<4)return $("#app").textContent="Need at least 4 entries with example sentences.";
+const r=nextWord(p),w=r.word.replace(/（.*）/,""),d=shuffle(p.filter(x=>x!=r)).slice(0,3);
+mc(esc(r.example.replace(w,"＿＿")),esc(r.en),r.word,[r,...d].map(x=>({t:x.word,hz:1})),r.word)}
+
+function run(){({cards,quiz,fill})[mode]()}
+function ui(){$("#nav").innerHTML=Object.entries(MODES).map(([k,v])=>`<button data-m="${k}" class="${k==mode?"on":""}">${v}</button>`).join("");
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{mode=b.dataset.m;score=[0,0];ui();run()});
+const ls=["all",...new Set(rows.map(r=>r.lesson))];
+$("#les").innerHTML=ls.map(l=>`<option ${l==lesson?"selected":""}>${esc(l)}</option>`).join("");
+$("#les").onchange=e=>{lesson=e.target.value;run()}}
+
+fetch(SHEET_URL||"words.csv").then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{rows=parseCSV(t);ui();run()})
+.catch(()=>$("#app").textContent="Could not load the word list. Check the SHEET_URL or that words.csv is next to index.html.");
+</script></body></html>
